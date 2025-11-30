@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
     <title>你还好吗 - To 张彦熙</title>
     
     <style>
@@ -17,6 +18,8 @@
             height: 100vh;
             background-color: #F0F8FF;
             overflow: hidden; 
+            /* 优化：强制 body 采用浅色模式，防止字体和背景颜色被覆盖 */
+            color-scheme: light; 
         }
 
         /* 主容器 */
@@ -58,11 +61,11 @@
         @keyframes popup-appear {
             from {
                 opacity: 0;
-                transform: scale(0.1); /* 从极小的点开始 */
+                transform: scale(0.1); 
             }
             to {
                 opacity: 1;
-                transform: scale(1); /* 放大到正常大小 */
+                transform: scale(1); 
             }
         }
 
@@ -84,13 +87,14 @@
             display: flex; 
             flex-direction: column;
             overflow: hidden; 
-            /* 确保元素中心点是缩放的基点 */
             transform-origin: center center; 
+            /* 优化：防止被深色模式影响 */
+            color-scheme: light; 
         }
 
         /* 动画触发类：仅对随机弹窗添加动画 */
         .popup-animate {
-            animation: popup-appear 0.3s ease-out forwards; /* 0.3秒动画，结束时保持状态 */
+            animation: popup-appear 0.3s ease-out forwards; 
         }
 
         /* 弹窗标题样式 */
@@ -116,6 +120,7 @@
             word-break: break-word; 
         }
         
+        /* 最终居中弹窗 */
         #center-modal-content {
             position: absolute; 
             background-color: white;
@@ -124,12 +129,14 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
             text-align: center;
             width: 300px;
-            max-width: 90%;
+            max-width: 90%; /* 优化：确保在小屏幕上不会溢出 */
             z-index: 1000; 
             cursor: grab;
             overflow: hidden; 
+            color-scheme: light; 
         }
 
+        /* 专门处理 hidden 属性的样式 */
         #center-modal-content:not([hidden]) {
             display: flex; 
             flex-direction: column;
@@ -217,39 +224,60 @@
         const body = document.body;
         const centerModalTitle = document.getElementById('center-modal-title');
         
-        // ================== 可拖动效果 ==================
+        // ================== 可拖动函数 (支持触摸屏) ==================
 
         function makeElementDraggable(element, handle = element) { 
             let pos3 = 0, pos4 = 0; 
             let isDragging = false; 
 
-            function dragMouseDown(e) {
-                e = e || window.event;
-                e.preventDefault();
-                
+            // 判断是鼠标事件还是触摸事件
+            function getClientCoords(e) {
+                if (e.touches) {
+                    return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+                }
+                return { clientX: e.clientX, clientY: e.clientY };
+            }
+
+            function dragStart(e) {
+                // 阻止移动端默认的滚动行为
+                if (e.touches && e.cancelable) {
+                    e.preventDefault();
+                }
+
                 // 如果是按钮被点击，不开始拖动
                 if (e.target.tagName === 'BUTTON') return;
 
+                const coords = getClientCoords(e);
                 isDragging = true;
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                
-                document.onmouseup = closeDragElement;
-                document.onmousemove = elementDrag;
+                pos3 = coords.clientX;
+                pos4 = coords.clientY;
                 
                 element.style.zIndex = 9999; 
+
+                // 绑定事件
+                if (e.touches) {
+                    document.ontouchend = dragEnd;
+                    document.ontouchmove = elementDrag;
+                } else {
+                    document.onmouseup = dragEnd;
+                    document.onmousemove = elementDrag;
+                }
             }
 
             function elementDrag(e) {
                 if (!isDragging) return;
-
-                e = e || window.event;
-                e.preventDefault();
                 
-                let pos1 = pos3 - e.clientX; 
-                let pos2 = pos4 - e.clientY; 
-                pos3 = e.clientX; 
-                pos4 = e.clientY; 
+                // 阻止移动端默认的滚动行为
+                if (e.touches && e.cancelable) {
+                    e.preventDefault();
+                }
+
+                const coords = getClientCoords(e);
+                
+                let pos1 = pos3 - coords.clientX; 
+                let pos2 = pos4 - coords.clientY; 
+                pos3 = coords.clientX; 
+                pos4 = coords.clientY; 
                 
                 let newTop = element.offsetTop - pos2;
                 let newLeft = element.offsetLeft - pos1;
@@ -262,11 +290,14 @@
                 element.style.left = newLeft + "px";
             }
 
-            function closeDragElement() {
+            function dragEnd() {
                 isDragging = false;
                 
+                // 移除所有事件监听
                 document.onmouseup = null;
                 document.onmousemove = null;
+                document.ontouchend = null;
+                document.ontouchmove = null;
                 
                 if (element.id === 'center-modal-content') {
                     element.style.zIndex = 1000;
@@ -275,8 +306,10 @@
                 }
             }
             
-            // 将拖动事件绑定到指定的 handle 元素上
-            handle.onmousedown = dragMouseDown;
+            // 绑定鼠标事件
+            handle.onmousedown = dragStart;
+            // 绑定触摸事件
+            handle.ontouchstart = dragStart;
         }
 
         // ================== 核心功能函数 ==================
@@ -294,7 +327,7 @@
             const bgColor = backgroudColors[Math.floor(Math.random() * backgroudColors.length)];
             
             const popup = document.createElement('div');
-            popup.className = 'popup popup-animate';
+            popup.className = 'popup popup-animate'; 
             popup.style.backgroundColor = bgColor;
             
             // 添加标题栏
@@ -327,7 +360,6 @@
         function createCenterPopup() {
             mainBox.style.display = 'none'; 
             
-            // 关键修改：移除 hidden 属性以显示弹窗
             centerModalContent.removeAttribute('hidden');
             const modalRect = centerModalContent.getBoundingClientRect();
             
@@ -344,7 +376,6 @@
             
             document.querySelectorAll('.popup').forEach(p => p.remove());
             
-            // 确保隐藏中心弹窗 (如果在上一次运行中未关闭)
             centerModalContent.setAttribute('hidden', '');
             Message_counting = 0;
 
@@ -356,7 +387,6 @@
                 clearInterval(timerId);
             }
             
-            // 关键修改：添加 hidden 属性以隐藏弹窗
             centerModalContent.setAttribute('hidden', '');
             
             document.querySelectorAll('.popup').forEach(p => {
@@ -374,7 +404,6 @@
 
         // 窗口大小改变时重新居中模态框
         window.addEventListener('resize', () => {
-             // 仅当弹窗显示时才重新计算位置
              if (!centerModalContent.hasAttribute('hidden')) {
                  const modalRect = centerModalContent.getBoundingClientRect();
                  centerModalContent.style.left = `${(window.innerWidth - modalRect.width) / 2}px`;
