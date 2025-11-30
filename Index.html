@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>你还好吗 - To 张彦熙</title>
+    
+    <style>
+        /* ================== CSS 样式 ================== */
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #F0F8FF;
+            overflow: hidden; 
+        }
+
+        /* 主容器 */
+        #main-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #333333;
+            margin-bottom: 30px;
+        }
+
+        /* 按钮样式 */
+        button {
+            width: 220px;
+            height: 50px;
+            font-size: 18px;
+            color: white;
+            background-color: #007AFF;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: 500;
+        }
+        button:hover {
+            background-color: #005bb5;
+        }
+
+        /* ================== 动画定义 ================== */
+        @keyframes popup-appear {
+            from {
+                opacity: 0;
+                transform: scale(0.1); /* 从极小的点开始 */
+            }
+            to {
+                opacity: 1;
+                transform: scale(1); /* 放大到正常大小 */
+            }
+        }
+
+        /* ================== 弹窗样式 ================== */
+
+        /* 随机弹窗的通用样式 */
+        .popup {
+            position: absolute;
+            font-size: 14px;
+            color: #333333;
+            border-radius: 12px; 
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 5; 
+            text-align: center;
+            max-width: 220px;
+            min-height: 70px; 
+            transition: opacity 0.3s;
+            cursor: grab;
+            display: flex; 
+            flex-direction: column;
+            overflow: hidden; 
+            /* 确保元素中心点是缩放的基点 */
+            transform-origin: center center; 
+        }
+
+        /* 动画触发类：仅对随机弹窗添加动画 */
+        .popup-animate {
+            animation: popup-appear 0.3s ease-out forwards; /* 0.3秒动画，结束时保持状态 */
+        }
+
+        /* 弹窗标题样式 */
+        .popup-title {
+            font-size: 12px; 
+            font-weight: bold;
+            color: #555555;
+            background-color: rgba(255, 255, 255, 0.7); 
+            padding: 5px 10px;
+            border-top-left-radius: 10px; 
+            border-top-right-radius: 10px;
+            text-align: left;
+            user-select: none; 
+            cursor: grab; 
+        }
+        /* 弹窗内容样式 */
+        .popup-content {
+            padding: 10px 15px; 
+            flex-grow: 1; 
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+            word-break: break-word; 
+        }
+        
+        #center-modal-content {
+            position: absolute; 
+            background-color: white;
+            padding: 0;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: 300px;
+            max-width: 90%;
+            z-index: 1000; 
+            cursor: grab;
+            overflow: hidden; 
+        }
+
+        #center-modal-content:not([hidden]) {
+            display: flex; 
+            flex-direction: column;
+        }
+
+        #center-modal-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #555555;
+            background-color: #f0f0f0; 
+            padding: 8px 15px;
+            text-align: left;
+            user-select: none;
+            cursor: grab;
+            flex-shrink: 0; 
+        }
+
+        #center-modal-body {
+            padding: 20px 30px 30px; 
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #modal-content-p {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 25px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-box">
+        <h1>你还好吗👀</h1>
+        <button id="startButton">我是按钮，请点击我</button>
+    </div>
+
+    <div id="center-modal-content" hidden>
+        <div id="center-modal-title">To 张同学</div>
+        <div id="center-modal-body">
+            <p id="modal-content-p">请记住你永远不是孤单一人前行，我永远在这里 (ง •_•)ง</p>
+            <button id="closeButton">关闭所有弹窗，继续热爱生活！</button>
+        </div>
+    </div>
+
+    <script>
+        /* ================== JavaScript 逻辑 ================== */
+
+        const Count_message = 50;       
+        const Delay = 100;              
+        let Message_counting = 0;     
+        let timerId = null;           
+        
+        const messages = [
+            "今天过得好吗？ヾ(≧▽▽*)o", "天气不错吧，有下雨吗？🌧️", "有没有出去走走啊？<(￣︶￣)↗[GO!]",
+            "要不分享一下你最近看的书？📚📖", "天冷了，是不是要加一件衣服啊？❄️", "记得多喝水！🥤O(∩_∩)O",
+            "会不会想我啊？", "每天都要记得锻炼哦！o(^▽^)o", "有没有好好吃饭？👀早饭也是要好好吃的哦o(〃＾▽▽〃)o",
+            "有遇到什么烦心事吗？请一定记住会好起来💕╰(*°▽°*)╯", "今天的夕阳美不美？快拍给我看看！🌇(⁎˃ᆺ˂)",
+            "新的一天，也要元气满满！冲鸭！🚀v(￣︶￣)v", "告诉你一个秘密：你笑起来最好看！(★ ω ★)",
+            "有没有什么小愿望今天实现了呢？✨(ﾉ◕ヮヮ)ﾉ*:･ﾟ✧", "今天也是努力发光的小太阳呢！☀️✧(≖ ◡ ≖✿)",
+            "记得给家里的花花浇浇水哦！🌼(●´ω｀●)", "分享一个今天遇到的小确幸给我吧！🍀(๑¯◡¯๑)",
+            "有没有被什么有趣的事情逗笑？😆哈哈哈！", "你努力的样子，真的超迷人的！😉(★^O^★)",
+            "天气干燥，记得涂润唇膏哦！👄", "今天有没有学到什么新知识呀？📝(・ω<)★",
+            "颜表情纯享版{(✿◠‿◠) (*≧︶≦))(￣▽▽* )ゞ (p≧w≦q)}", "晚上要早点休息，不要当夜猫子哦！🌙(～﹃～)~zZ",
+            "今天有没有对自己好一点？ (´,,•ω•,,)♡", "不管发生什么，我都会在这里为你加油！🎉╰(°▽°)╯",
+            "早上起床后有没有伸个大大的懒腰呀？🌞╰(￣▽￣)╭", "傍晚的风温柔吗？有没有带来秋天的味道？🍂(～￣▽▽)～",
+            "如果今天有点辛苦，那说明你在上坡路呀！加油！💪(๑•̀ㅂ•́)و✧", "今天有没有哪个瞬间，觉得自己超级厉害？👑(★ ω ★)",
+            "睡前可以想想开心的事，这样梦都会是甜的哦！🍭(✿◠‿◠)", "你知不知道，你对我而言是非常非常重要的人！💕(●'◡'●)",
+        ];
+
+        const backgroudColors = [
+            "#FFDAB9", "#B0E0E6", "#C1FFC1", 
+            "#FFE4B5", "#F0E68C", "#FFFACD", 
+            "#D8BFD8", "#FFB6C1", "#E6E6FA", 
+        ];
+
+        const startButton = document.getElementById('startButton');
+        const mainBox = document.getElementById('main-box');
+        const centerModalContent = document.getElementById('center-modal-content'); 
+        const closeButton = document.getElementById('closeButton');
+        const body = document.body;
+        const centerModalTitle = document.getElementById('center-modal-title');
+        
+        // ================== 可拖动效果 ==================
+
+        function makeElementDraggable(element, handle = element) { 
+            let pos3 = 0, pos4 = 0; 
+            let isDragging = false; 
+
+            function dragMouseDown(e) {
+                e = e || window.event;
+                e.preventDefault();
+                
+                // 如果是按钮被点击，不开始拖动
+                if (e.target.tagName === 'BUTTON') return;
+
+                isDragging = true;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+                
+                element.style.zIndex = 9999; 
+            }
+
+            function elementDrag(e) {
+                if (!isDragging) return;
+
+                e = e || window.event;
+                e.preventDefault();
+                
+                let pos1 = pos3 - e.clientX; 
+                let pos2 = pos4 - e.clientY; 
+                pos3 = e.clientX; 
+                pos4 = e.clientY; 
+                
+                let newTop = element.offsetTop - pos2;
+                let newLeft = element.offsetLeft - pos1;
+                
+                // 边界限制
+                newTop = Math.max(0, Math.min(newTop, window.innerHeight - element.offsetHeight));
+                newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - element.offsetWidth));
+
+                element.style.top = newTop + "px";
+                element.style.left = newLeft + "px";
+            }
+
+            function closeDragElement() {
+                isDragging = false;
+                
+                document.onmouseup = null;
+                document.onmousemove = null;
+                
+                if (element.id === 'center-modal-content') {
+                    element.style.zIndex = 1000;
+                } else {
+                    element.style.zIndex = 5;
+                }
+            }
+            
+            // 将拖动事件绑定到指定的 handle 元素上
+            handle.onmousedown = dragMouseDown;
+        }
+
+        // ================== 核心功能函数 ==================
+
+        function createPopup() {
+            if (Message_counting >= Count_message) {
+                clearInterval(timerId); 
+                createCenterPopup();
+                return;
+            }
+            
+            Message_counting++;
+
+            const msg = messages[Math.floor(Math.random() * messages.length)];
+            const bgColor = backgroudColors[Math.floor(Math.random() * backgroudColors.length)];
+            
+            const popup = document.createElement('div');
+            popup.className = 'popup popup-animate';
+            popup.style.backgroundColor = bgColor;
+            
+            // 添加标题栏
+            const titleBar = document.createElement('div');
+            titleBar.className = 'popup-title';
+            titleBar.textContent = 'To 张同学';
+            popup.appendChild(titleBar);
+
+            // 添加内容区域
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'popup-content';
+            contentDiv.textContent = msg;
+            popup.appendChild(contentDiv);
+            
+            const vpWidth = window.innerWidth;
+            const vpHeight = window.innerHeight;
+
+            const x = Math.floor(Math.random() * (vpWidth - 250)) + 20; 
+            const y = Math.floor(Math.random() * (vpHeight - 150)) + 20; 
+
+            popup.style.left = `${x}px`;
+            popup.style.top = `${y}px`;
+
+            // 使随机弹窗可拖动，绑定到整个 popup 元素
+            makeElementDraggable(popup); 
+
+            body.appendChild(popup);
+        }
+
+        function createCenterPopup() {
+            mainBox.style.display = 'none'; 
+            
+            // 关键修改：移除 hidden 属性以显示弹窗
+            centerModalContent.removeAttribute('hidden');
+            const modalRect = centerModalContent.getBoundingClientRect();
+            
+            // 计算位置实现居中
+            centerModalContent.style.left = `${(window.innerWidth - modalRect.width) / 2}px`;
+            centerModalContent.style.top = `${(window.innerHeight - modalRect.height) / 2}px`;
+
+            // 使中心弹窗可拖动，只通过标题栏拖动
+            makeElementDraggable(centerModalContent, centerModalTitle); 
+        }
+
+        function startPopups() {
+            mainBox.style.display = 'none'; 
+            
+            document.querySelectorAll('.popup').forEach(p => p.remove());
+            
+            // 确保隐藏中心弹窗 (如果在上一次运行中未关闭)
+            centerModalContent.setAttribute('hidden', '');
+            Message_counting = 0;
+
+            timerId = setInterval(createPopup, Delay);
+        }
+
+        function clearAllPopups() {
+            if (timerId) {
+                clearInterval(timerId);
+            }
+            
+            // 关键修改：添加 hidden 属性以隐藏弹窗
+            centerModalContent.setAttribute('hidden', '');
+            
+            document.querySelectorAll('.popup').forEach(p => {
+                p.style.opacity = '0'; 
+                setTimeout(() => p.remove(), 300); 
+            });
+            
+            mainBox.style.display = 'flex';
+            Message_counting = 0;
+        }
+
+        // ================== 事件监听 ==================
+        startButton.addEventListener('click', startPopups);
+        closeButton.addEventListener('click', clearAllPopups);
+
+        // 窗口大小改变时重新居中模态框
+        window.addEventListener('resize', () => {
+             // 仅当弹窗显示时才重新计算位置
+             if (!centerModalContent.hasAttribute('hidden')) {
+                 const modalRect = centerModalContent.getBoundingClientRect();
+                 centerModalContent.style.left = `${(window.innerWidth - modalRect.width) / 2}px`;
+                 centerModalContent.style.top = `${(window.innerHeight - modalRect.height) / 2}px`;
+             }
+        });
+        
+    </script>
+
+</body>
+</html>
