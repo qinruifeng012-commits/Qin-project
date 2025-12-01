@@ -18,7 +18,6 @@
             height: 100vh;
             background-color: #F0F8FF;
             overflow: hidden; 
-            /* 优化：强制 body 采用浅色模式，防止字体和背景颜色被覆盖 */
             color-scheme: light; 
         }
 
@@ -57,6 +56,27 @@
             background-color: #005bb5;
         }
 
+        /* ================== 音乐控件样式 ================== */
+        #music-control {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            text-align: center;
+            font-size: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            z-index: 1001; /* 确保它在最顶层 */
+            transition: background-color 0.2s;
+        }
+        #music-control:hover {
+            background-color: rgba(255, 255, 255, 1);
+        }
+
         /* ================== 动画定义 ================== */
         @keyframes popup-appear {
             from {
@@ -78,7 +98,7 @@
             color: #333333;
             border-radius: 12px; 
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            z-index: 5; 
+            z-index: 5; /* 初始层级较低 */
             text-align: center;
             max-width: 220px;
             min-height: 70px; 
@@ -88,8 +108,8 @@
             flex-direction: column;
             overflow: hidden; 
             transform-origin: center center; 
-            /* 优化：防止被深色模式影响 */
             color-scheme: light; 
+            touch-action: none; /* 优化：避免在拖动时触发浏览器手势 */
         }
 
         /* 动画触发类：仅对随机弹窗添加动画 */
@@ -129,8 +149,8 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
             text-align: center;
             width: 300px;
-            max-width: 90%; /* 优化：确保在小屏幕上不会溢出 */
-            z-index: 1000; 
+            max-width: 90%; 
+            z-index: 1000; /* 最高层级 */
             cursor: grab;
             overflow: hidden; 
             color-scheme: light; 
@@ -178,6 +198,10 @@
         <button id="startButton">我是按钮，请点击我</button>
     </div>
 
+    <div id="music-control">
+        <span id="music-icon">🎶</span> </div>
+    <audio id="bg-music" loop src="12月1日.MP3"></audio>
+
     <div id="center-modal-content" hidden>
         <div id="center-modal-title">To 张同学</div>
         <div id="center-modal-body">
@@ -193,6 +217,7 @@
         const Delay = 100;              
         let Message_counting = 0;     
         let timerId = null;           
+        let currentZIndex = 5; // 用于动态提升随机弹窗层级
         
         const messages = [
             "今天过得好吗？ヾ(≧▽▽*)o", "天气不错吧，有下雨吗？🌧️", "有没有出去走走啊？<(￣︶￣)↗[GO!]",
@@ -224,13 +249,38 @@
         const body = document.body;
         const centerModalTitle = document.getElementById('center-modal-title');
         
-        // ================== 可拖动函数 (支持触摸屏) ==================
+        const musicControl = document.getElementById('music-control');
+        const musicIcon = document.getElementById('music-icon');
+        const bgMusic = document.getElementById('bg-music');
+
+        // ================== 音乐控制逻辑 ==================
+
+        function toggleMusic() {
+            if (bgMusic.paused) {
+                // 注意：在移动端，autoplay通常被禁止，播放操作必须由用户手势触发。
+                // 首次点击时，先尝试播放
+                bgMusic.play().then(() => {
+                    musicIcon.textContent = '🎶'; // 播放图标
+                }).catch(error => {
+                    // 播放失败，可能是浏览器阻止了，保持暂停图标
+                    musicIcon.textContent = '🔇'; 
+                    console.log("音乐自动播放被阻止，请确保在用户交互后调用 play()");
+                });
+            } else {
+                bgMusic.pause();
+                musicIcon.textContent = '🔇'; // 暂停图标
+            }
+        }
+        
+        musicControl.addEventListener('click', toggleMusic);
+
+        // ================== 可拖动函数 (支持触摸屏 & 提升层级) ==================
 
         function makeElementDraggable(element, handle = element) { 
             let pos3 = 0, pos4 = 0; 
             let isDragging = false; 
+            let isClicked = false; // 新增：用于判断是否只是单纯的点击
 
-            // 判断是鼠标事件还是触摸事件
             function getClientCoords(e) {
                 if (e.touches) {
                     return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
@@ -248,11 +298,17 @@
                 if (e.target.tagName === 'BUTTON') return;
 
                 const coords = getClientCoords(e);
+                isClicked = true; // 假设是点击
                 isDragging = true;
                 pos3 = coords.clientX;
                 pos4 = coords.clientY;
                 
-                element.style.zIndex = 9999; 
+                // 仅当是随机弹窗时，提升层级到仅次于最终弹窗的顶层 (1000 - 1)
+                if (element.className.includes('popup')) {
+                     element.style.zIndex = ++currentZIndex;
+                } else {
+                     element.style.zIndex = 1000; // 最终弹窗固定层级
+                }
 
                 // 绑定事件
                 if (e.touches) {
@@ -272,6 +328,8 @@
                     e.preventDefault();
                 }
 
+                isClicked = false; // 拖动发生，不是单纯的点击
+
                 const coords = getClientCoords(e);
                 
                 let pos1 = pos3 - coords.clientX; 
@@ -290,8 +348,14 @@
                 element.style.left = newLeft + "px";
             }
 
-            function dragEnd() {
+            function dragEnd(e) {
                 isDragging = false;
+                
+                // 如果是点击事件（没有进行拖动），且不是最终弹窗
+                if (isClicked && element.className.includes('popup')) {
+                     // 再次确认层级提升（虽然已在 dragStart 中处理）
+                     element.style.zIndex = ++currentZIndex;
+                }
                 
                 // 移除所有事件监听
                 document.onmouseup = null;
@@ -299,10 +363,9 @@
                 document.ontouchend = null;
                 document.ontouchmove = null;
                 
-                if (element.id === 'center-modal-content') {
-                    element.style.zIndex = 1000;
-                } else {
-                    element.style.zIndex = 5;
+                // 恢复 Z-index 的逻辑简化：因为我们在 dragStart 中已经提升了随机弹窗的层级，无需在此恢复
+                if (!element.className.includes('popup')) {
+                    element.style.zIndex = 1000; // 最终弹窗固定层级
                 }
             }
             
@@ -310,6 +373,14 @@
             handle.onmousedown = dragStart;
             // 绑定触摸事件
             handle.ontouchstart = dragStart;
+            
+            // 绑定 click 事件用于在非拖动情况下触发层级提升（对于随机弹窗）
+            handle.addEventListener('click', (e) => {
+                 if (e.target.tagName !== 'BUTTON' && element.className.includes('popup')) {
+                     // 再次确保层级提升
+                     element.style.zIndex = ++currentZIndex;
+                 }
+            });
         }
 
         // ================== 核心功能函数 ==================
@@ -330,6 +401,9 @@
             popup.className = 'popup popup-animate'; 
             popup.style.backgroundColor = bgColor;
             
+            // 初始层级使用 currentZIndex，确保新弹出的在最上面
+            popup.style.zIndex = ++currentZIndex; 
+
             // 添加标题栏
             const titleBar = document.createElement('div');
             titleBar.className = 'popup-title';
@@ -366,6 +440,7 @@
             // 计算位置实现居中
             centerModalContent.style.left = `${(window.innerWidth - modalRect.width) / 2}px`;
             centerModalContent.style.top = `${(window.innerHeight - modalRect.height) / 2}px`;
+            centerModalContent.style.zIndex = 1000; // 确保最终弹窗在最顶层
 
             // 使中心弹窗可拖动，只通过标题栏拖动
             makeElementDraggable(centerModalContent, centerModalTitle); 
@@ -378,8 +453,18 @@
             
             centerModalContent.setAttribute('hidden', '');
             Message_counting = 0;
+            currentZIndex = 5; // 重置随机弹窗的 Z-index 计数器
 
             timerId = setInterval(createPopup, Delay);
+            
+            // 在开始弹出时，尝试播放音乐
+            if (bgMusic.paused) {
+                 bgMusic.play().then(() => {
+                    musicIcon.textContent = '🎶'; 
+                }).catch(error => {
+                    musicIcon.textContent = '🔇'; 
+                });
+            }
         }
 
         function clearAllPopups() {
@@ -396,6 +481,7 @@
             
             mainBox.style.display = 'flex';
             Message_counting = 0;
+            currentZIndex = 5; // 重置 Z-index 计数器
         }
 
         // ================== 事件监听 ==================
